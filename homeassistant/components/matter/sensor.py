@@ -104,6 +104,31 @@ class MatterSensor(MatterEntity, SensorEntity):
         self._attr_native_value = value
 
 
+class MatterLegacyElectricalMeasurementSensor(MatterEntity, SensorEntity):
+    """Representation of a Matter sensor for legacy ElectricalMeasurement cluster."""
+
+    entity_description: MatterSensorEntityDescription
+
+    @callback
+    def _update_from_device(self) -> None:
+        """Update from device."""
+        raw_value: Nullable | float | None
+        divisor: Nullable | float | None
+        multiplier: Nullable | float | None
+
+        raw_value, divisor, multiplier = (
+            self.get_matter_attribute_value(self._entity_info.attributes_to_watch[0]),
+            self.get_matter_attribute_value(self._entity_info.attributes_to_watch[1]),
+            self.get_matter_attribute_value(self._entity_info.attributes_to_watch[2]),
+        )
+        for value in (raw_value, divisor, multiplier):
+            if value in (None, NullValue):
+                self._attr_native_value = None
+                return
+
+        self._attr_native_value = (raw_value / divisor) * multiplier
+
+
 class MatterOperationalStateSensor(MatterSensor):
     """Representation of a sensor for Matter Operational State."""
 
@@ -621,6 +646,57 @@ DISCOVERY_SCHEMAS = [
         entity_class=MatterSensor,
         required_attributes=(
             clusters.ElectricalEnergyMeasurement.Attributes.CumulativeEnergyImported,
+        ),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.SENSOR,
+        entity_description=MatterSensorEntityDescription(
+            key="ElectricalMeasurementActivePower",
+            device_class=SensorDeviceClass.POWER,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            native_unit_of_measurement=UnitOfPower.WATT,
+            suggested_display_precision=2,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        entity_class=MatterLegacyElectricalMeasurementSensor,
+        required_attributes=(
+            clusters.ElectricalMeasurement.Attributes.ActivePower,
+            clusters.ElectricalMeasurement.Attributes.AcPowerDivisor,
+            clusters.ElectricalMeasurement.Attributes.AcPowerMultiplier,
+        ),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.SENSOR,
+        entity_description=MatterSensorEntityDescription(
+            key="ElectricalMeasurementRmsVoltage",
+            device_class=SensorDeviceClass.VOLTAGE,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+            suggested_display_precision=0,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        entity_class=MatterLegacyElectricalMeasurementSensor,
+        required_attributes=(
+            clusters.ElectricalMeasurement.Attributes.RmsVoltage,
+            clusters.ElectricalMeasurement.Attributes.AcVoltageDivisor,
+            clusters.ElectricalMeasurement.Attributes.AcVoltageMultiplier,
+        ),
+    ),
+    MatterDiscoverySchema(
+        platform=Platform.SENSOR,
+        entity_description=MatterSensorEntityDescription(
+            key="ElectricalMeasurementRmsCurrent",
+            device_class=SensorDeviceClass.CURRENT,
+            entity_category=EntityCategory.DIAGNOSTIC,
+            native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+            suggested_display_precision=2,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        entity_class=MatterLegacyElectricalMeasurementSensor,
+        required_attributes=(
+            clusters.ElectricalMeasurement.Attributes.RmsCurrent,
+            clusters.ElectricalMeasurement.Attributes.AcCurrentDivisor,
+            clusters.ElectricalMeasurement.Attributes.AcCurrentMultiplier,
         ),
     ),
     MatterDiscoverySchema(
